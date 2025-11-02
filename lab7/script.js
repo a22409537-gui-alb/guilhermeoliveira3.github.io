@@ -23,31 +23,33 @@ function carregarProdutos() {
         .then(response => response.json())
         .then(data => {
             produtos = data;
-            produtosFiltrados = [...produtos]
+            produtosFiltrados = [...produtos];
             carregarCategorias();
+            
             carregarLocalStorage();
+            aplicarFiltros();
         })
-        .catch(error => console.error('Erro:', error));
+        .catch(error => console.error('Erro ao carregar produtos:', error));
 }
 
-function carregarCategorias(){
+function carregarCategorias() {
     fetch(urlC)
         .then(response => response.json())
         .then(data => categorias = data)
         .catch(error => console.error('Erro:', error));
 }
 
-function aplicarFiltros(){
+function aplicarFiltros() {
     let produtosTemp = [...produtos];
 
-    if(filtros.pesquisa) {
+    if (filtros.pesquisa) {
         produtosTemp = produtosTemp.filter(produto =>
             //se o nome do produto tiver a pesquisa(mesmo que uma parte apenas) - case insensitive
             produto.title.toLowerCase().includes(filtros.pesquisa.toLowerCase())
         );
     }
 
-    if(filtros.categoria && filtros.categoria !== 'Todas as categorias'){
+    if (filtros.categoria && filtros.categoria !== 'Todas as categorias') {
         produtosTemp = produtosTemp.filter(produto =>
             produto.category === filtros.categoria
         );
@@ -59,8 +61,8 @@ function aplicarFiltros(){
     renderizarProdutos();
 }
 
-function ordenarProdutos(arrayProdutos, crit){
-    return arrayProdutos.sort((a,b) => {
+function ordenarProdutos(arrayProdutos, crit) {
+    return arrayProdutos.sort((a, b) => {
         switch (crit) {
             case 'nome':
                 return a.title.localeCompare(b.title);
@@ -170,7 +172,7 @@ function criarProduto(produto) {
             btn.className = "bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded";
             valorTotal += produto.price;
         } else {
-            if (produtosFiltrados.some(p => p.id === produto.id)){
+            if (produtosFiltrados.some(p => p.id === produto.id)) {
                 secaoProdutos.appendChild(art);
             }
             btn.textContent = "+ Adicionar ao Cesto"
@@ -196,7 +198,7 @@ function setupFiltros() {
 
     const selectTipo = document.getElementById('tipo');
     if (selectTipo) {
-        selectTipo.addEventListener('change', function() {
+        selectTipo.addEventListener('change', function () {
             filtros.categoria = this.value;
             aplicarFiltros();
         });
@@ -204,8 +206,8 @@ function setupFiltros() {
 
     const selectOrdenacao = document.getElementById('order');
     if (selectOrdenacao) {
-        selectOrdenacao.addEventListener('change', function() {
-            switch(this.value) {
+        selectOrdenacao.addEventListener('change', function () {
+            switch (this.value) {
                 case 'Preço Crescente':
                     filtros.ordenacao = 'preco';
                     break;
@@ -224,22 +226,67 @@ function setupFiltros() {
 
 document.addEventListener('DOMContentLoaded', function () {
     const limparCestoBtn = document.getElementById('limparCesto');
+    const comprarBtn = document.getElementById('comprar');
+    const estDeisi = document.getElementById('deisi');
+    const cupom = document.getElementById('cupom');
+    const msg = document.getElementById('res');
+    const url = "https://deisishop.pythonanywhere.com/buy/";
+    const itensNoCesto = Array.from(secaoCesto.querySelectorAll('article'))
+                .map(art => art.id)
+                .filter(id => id);
+
     if (limparCestoBtn) {
         limparCestoBtn.addEventListener('click', () => {
             localStorage.removeItem('cesto');
             localStorage.removeItem('valor');
             valorTotal = 0;
             attCesto();
-            if (secaoCesto) {
-                secaoCesto.innerHTML = '';
-            }
-            carregarLocalStorage();
+            secaoCesto.innerHTML = '';
         });
     }
 
+
+    if (comprarBtn && secaoCesto) {
+        comprarBtn.addEventListener('click', async () => {
+            msg.textContent = "A processar compra...";
+            msg.style.color = "black";
+
+            const products = Array.from(secaoCesto.querySelectorAll('article'))
+                .map(art => art.id)
+                .filter(id => id);
+
+            const student = estDeisi ? estDeisi.checked : false;
+            const coupon = cupom ? cupom.value.trim() : '';
+
+            const dados = { products, student, coupon };
+
+            try {
+                const resposta = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(dados)
+                });
+
+                const data = await resposta.json();
+
+                if (resposta.ok && data.totalCost !== undefined) {
+                    msg.style.color = "black";
+                    msg.textContent = `Valor final: ${data.totalCost}€ | Ref: ${data.reference}`;
+                } else {
+                    throw new Error(data.error || "Erro do servidor");
+                }
+            } catch (erro) {
+                console.error(erro);
+                msg.style.color = "red";
+                msg.textContent = "Erro ao efetuar compra!";
+            }
+        });
+    }
+
+
     setupFiltros();
 
-    // INICIA a aplicação
+
     carregarProdutos();
 });
 
