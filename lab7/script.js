@@ -231,9 +231,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const cupom = document.getElementById('cupom');
     const msg = document.getElementById('res');
     const url = "https://deisishop.pythonanywhere.com/buy/";
-    const itensNoCesto = Array.from(secaoCesto.querySelectorAll('article'))
-                .map(art => art.id)
-                .filter(id => id);
 
     if (limparCestoBtn) {
         limparCestoBtn.addEventListener('click', () => {
